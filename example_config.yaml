@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secret-robot
+  namespace: default
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: secret-role
+rules:
+- apiGroups: [""]
+  #
+  # at the HTTP level, the name of the resource for accessing Secret
+  # objects is "secrets"
+  resources: ["secrets"]
+  verbs:  ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: secrets-robot-binding
+subjects:
+- kind: ServiceAccount
+  name: secret-robot # name of your service account
+  namespace: default # this is the namespace your service account is in
+roleRef: # referring to your ClusterRole
+  kind: ClusterRole
+  name: secret-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app: cron-default-tls
+  name: cron-default-tls
+  namespace: default
+spec:
+  concurrencyPolicy: Allow
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: secret-robot
+          automountServiceAccountToken: true
+          containers:
+          - image: aarato/k8stlsupdate
+            name: k8stlsupdate
+            env:
+            - name: SECRETNAME
+              value: "mytls"
+            - name: TLS_CERT_FILE
+              value: "/certificates/cert.pem"
+            - name: TLS_KEY_FILE
+              value: "/certificates/privkey.pem"
+            volumeMounts:
+            - mountPath: /certificates
+              name: nfs-certificates
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          schedulerName: default-scheduler
+          volumes:
+          - name: nfs-certificates
+            nfs:
+              path: /volume1/nfs-certificates
+              server: my.nfs.server
+      ttlSecondsAfterFinished: 86400
+  schedule: 59 0 * * *
+  successfulJobsHistoryLimit: 3
+  suspend: false
