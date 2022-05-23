@@ -83,17 +83,18 @@ class KubeSecret:
   def get_certificate_files(self):
     # Read certificate from file
     try:
-      with open( self.tls_cert_file , mode='rb') as file: # b is important -> binary
+      with open( self.tls_cert_file , mode='rb') as file: 
         tls_cert_new_bin                  = file.read()
-        self.secret["data"]["tls.crt"]    = b64encode( tls_cert_new_bin) 
+        self.secret["data"]["tls.crt"]    = (b64encode( tls_cert_new_bin)).decode()
     except BaseException as error:
       log.error(f"Certificate is not avaialable at {self.tls_cert_file}")
+      log.error(f"ERROR {error}")
       sys.exit("Certificate file error")
     # Read certificate key from file
     try:
-      with open( self.tls_key_file , mode='rb') as file: # b is important -> binary
+      with open( self.tls_key_file , mode='rb') as file: 
         tls_key_new_bin                  = file.read()
-        self.secret["data"]["tls.key"]    = b64encode (tls_key_new_bin) 
+        self.secret["data"]["tls.key"]    = (b64encode (tls_key_new_bin)).decode()
     except BaseException as error:
       log.error(f"Certificate private key is not avaialable at {self.tls_key_file}")
       sys.exit("Certificate key error")      
@@ -122,7 +123,16 @@ class KubeSecret:
     if not old_secret:
       # Cretate secret's certificate with certificate from file
       url     = f"{self.apiserver}/api/v1/namespaces/{self.namespace}/secrets"
-      r = requests.post( url , json=new_secret, headers=self.headers, verify=self.ca_file)
+      try:
+        r = requests.post( url , json=new_secret, headers=self.headers, verify=self.ca_file)
+      except Exception as err:
+        log.error(f"UR: {url}")
+        log.error(f"JSON: {new_secret}")
+        log.error(f"Headers: {self.headers}")
+        log.error(f"EXCEPTION: {err}")
+        sys.exit("Kubernetes POST Error")
+        
+      
       if r.status_code == 201:
         log.info(f"Secret {self.name} has been created! Certificate: {cert_new.subject} expiration: {cert_new.not_valid_after} !")
         return new_secret
