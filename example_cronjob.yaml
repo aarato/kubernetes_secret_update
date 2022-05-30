@@ -37,6 +37,6 @@ spec:
               path: /volume1/nfs-certificates
               server: my.nfs.server
       ttlSecondsAfterFinished: 86400
-  schedule: 59 0 * * *
+  schedule: 59 0 * * 0
   successfulJobsHistoryLimit: 3
   suspend: false

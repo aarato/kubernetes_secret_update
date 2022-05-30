@@ -2,7 +2,7 @@
 This repo includes a python script that updates/creates Kubernetes TLS secret objects with provided certificate/key files. The Kubernetes object is only updated if the provided certificate expiration date is later than the one stored in the existing TLS Secret object. Using the provided Dockerfile the script can be containerized and it is intended to be run as a standalone Kubernetes cronjob that monitors a mounted directory where the certificates are located.
 
 ## Prerequisites
-- Service Account: This is required for authentication and authorization purposes so that the script could change the secret
+- Service Account: This is required for authentication and authorization purposes so that the script running inside the pod could change the secret.
 - Environment Variables: The variables used to customize the script runtime.
 ### Service Account
 A sample declarative configuration file - *sample_account.yaml* - is also included with this repo.
@@ -13,7 +13,7 @@ kubectl create clusterrole test --verb=get,list,watch,create,update,patch,delete
 kubectl create clusterrolebinding test --clusterrole=test --serviceaccount=default:test
 ```
 ### Environment Variables
-If script is run inside a Kubernetes pod and a service account is associated with the pod, only the mandatory variables are needed to run the script.
+If the script is run inside a Kubernetes pod and a service account with proper authorization is associated with the pod, only the mandatory variables are needed.
 | Name            | Description                | Mandatory | Default Value
 | -----------     | -----------                |---------- | ---------- |
 | SECRETNAME      | secret object name         | yes       | N/A        |
@@ -26,7 +26,7 @@ If script is run inside a Kubernetes pod and a service account is associated wit
 
 ## Sample Declarative Configuration
 
-See the provided - *example_cronjob.yaml* - file as an example that runs the script everyday and updates the secret TLS certificate from an attached volume as long as the certificate has a later expiration date.
+See the provided - *example_cronjob.yaml* - file as an example that runs the script every Sunday and updates the secret TLS certificate from an attached volume as long as the certificate has a later expiration date.
 ```
 kubectl apply -f example_cronjob.yaml
 ```
@@ -34,8 +34,11 @@ You can verify the stored certificate using kubectl. Example:
 ```
 kubectl get secrets mysecret -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 --text
 ```
+# Examples
 
 ## Build a Multi-Arch Docker Image
+The below example will build a docker image with amd64 and arm64 support and upload the image to dockerhub.
+
 ```
 docker buildx build \
 --push \
